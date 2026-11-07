@@ -1,0 +1,34 @@
+# Render Blueprint: one free Docker web service. The database is Neon (free Postgres).
+services:
+  - type: web
+    name: deskreview
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL # Neon *direct* (non-pooled) connection string with sslmode=require
+        sync: false
+      - key: GEMINI_API_KEY # from Google AI Studio; leave empty to run without AI Assist
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_PASSWORD # only for username/password login; demo buttons need no password
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: FILE_STORAGE # Render's free disk is wiped on restart, so files live in Postgres
+        value: database
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_FALLBACK_MODEL # the retry uses this when the main model is busy
+        value: gemini-3.6-flash
+      - key: AI_TIMEOUT_SECONDS
+        value: "25"
+      - key: NUM_PROXIES # trust one proxy hop for per-IP login throttling
+        value: "1"
+      - key: LOG_LEVEL
+        value: INFO

@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.e2e
+docs
+**/__pycache__
+**/node_modules
+**/.venv
+frontend/dist
+frontend/playwright-report
+frontend/test-results
+backend/staticfiles
+backend/media
+backend/db.sqlite3
