@@ -1,0 +1,40 @@
+[project]
+name = "deskreview-backend"
+version = "0.1.0"
+description = "DeskReview document approval API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "dj-database-url>=3.1.2",
+    "django>=5.2,<5.3",
+    "djangorestframework>=3.18.3",
+    "drf-spectacular>=0.30.0",
+    "google-genai>=3.0.0",
+    "gunicorn>=26.2.0",
+    "psycopg[binary]>=3.3.8",
+    "pypdf>=7.0.0",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-django>=4.14.0",
+    "ruff>=0.17.4",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.test_settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore:No directory at:UserWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ"]
+# NULL is meaningful in this schema (e.g. body_text is NULL for file documents, per the DB constraints).
+ignore = ["DJ001"]
