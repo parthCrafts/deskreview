@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+media/
+node_modules/
+frontend/dist/
+staticfiles/
+.e2e/
+playwright-report/
+test-results/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
