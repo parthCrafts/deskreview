@@ -54,6 +54,21 @@ describe('ReviewActions', () => {
     expect(posts).toHaveLength(0)
   })
 
+  it('asks for a reason of at least 10 characters before rejecting', async () => {
+    const { user, onReview } = renderReview()
+    let called = false
+    onReview(() => {
+      called = true
+      return HttpResponse.json({})
+    })
+    await user.click(await screen.findByRole('button', { name: /^reject/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/reason/i), 'Fix it')
+    await user.click(within(dialog).getByRole('button', { name: /reject document/i }))
+    expect(await within(dialog).findByText(/at least 10 characters/i)).toBeInTheDocument()
+    expect(called).toBe(false)
+  })
+
   it('maps server comment error to the field', async () => {
     const { user, onReview } = renderReview()
     onReview(() =>
@@ -63,10 +78,10 @@ describe('ReviewActions', () => {
     )
     await user.click(await screen.findByRole('button', { name: /^reject/i }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText(/reason/i), 'Too short')
+    await user.type(within(dialog).getByLabelText(/reason/i), 'Missing the signature page')
     await user.click(within(dialog).getByRole('button', { name: /reject document/i }))
     const field = within(dialog).getByLabelText(/reason/i)
-    await waitFor(() => expect(field).toHaveAccessibleDescription('Comment must be at most 2,000 characters.'))
+    await waitFor(() => expect(field).toHaveAccessibleDescription(/^Comment must be at most 2,000 characters\. /))
   })
 
   it('approves, toasts and moves on to the queue when nothing else is pending', async () => {
@@ -93,7 +108,7 @@ describe('ReviewActions', () => {
     })
     await user.click(await screen.findByRole('button', { name: /^reject/i }))
     const dialog = await screen.findByRole('dialog')
-    await user.type(within(dialog).getByLabelText(/reason/i), 'No')
+    await user.type(within(dialog).getByLabelText(/reason/i), 'Not detailed enough')
     await user.click(within(dialog).getByRole('button', { name: /reject document/i }))
     expect(await screen.findByText('Already approved by Sam Lee.')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

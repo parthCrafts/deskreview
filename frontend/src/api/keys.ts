@@ -12,4 +12,5 @@ export const qk = {
   documents: (params?: ListQuery) => (params ? (['documents', params] as const) : (['documents'] as const)),
   document: (id: string) => ['document', id] as const,
   assist: (id: string) => ['assist', id] as const,
+  adminUsers: ['admin-users'] as const,
 }

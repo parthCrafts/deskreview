@@ -40,7 +40,7 @@ def test_login_missing_fields_400_fields(api_client):
 
 
 def test_demo_users_listed(api_client, submitter, reviewer, settings):
-    """Demo users are listed grouped by role for the login buttons."""
+    """Demo users are listed for the one-click login buttons, never with a password."""
     settings.DEMO_LOGIN_ENABLED = True
     User.objects.create_user("eve", password="x", role="submitter", is_demo=False)
     r = api_client.get("/api/v1/auth/demo-users")

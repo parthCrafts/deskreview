@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/schema", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
     path("api/v1/auth/", include("apps.accounts.urls")),
+    path("api/v1/admin/", include("apps.accounts.admin_urls")),
     path("api/v1/", include("apps.documents.api.urls")),
     path("api/v1/", include("apps.assist.api.urls")),
     re_path(r"^api/.*$", api_not_found),

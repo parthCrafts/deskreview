@@ -5,6 +5,9 @@ from typing import Protocol
 
 from django.conf import settings
 
+# Covers thinking plus the short JSON brief; a cut-off answer fails validation and falls back.
+MAX_OUTPUT_TOKENS = 2048
+
 
 class ProviderTimeout(Exception):
     """The provider did not answer in time."""
@@ -48,10 +51,11 @@ class GeminiProvider:
 
     name = "gemini"
 
-    def __init__(self, api_key: str, model: str):
-        """Remember the key and model name."""
+    def __init__(self, api_key: str, model: str, thinking_level: str = "low"):
+        """Remember the key, model name and how much the model may think before answering."""
         self.api_key = api_key
         self.model = model
+        self.thinking_level = thinking_level
 
     def generate(self, system: str, prompt: str, timeout: float) -> str:
         """Call generate_content once; map timeouts and failures to provider exceptions."""
@@ -64,8 +68,9 @@ class GeminiProvider:
             response_mime_type="application/json",
             response_schema=GEMINI_RESPONSE_SCHEMA,
             temperature=0.2,
-            # Low thinking keeps Gemini 3.x Flash within the request timeout.
-            thinking_config=types.ThinkingConfig(thinking_level="low"),
+            # The brief is short by design: a tight token cap and little thinking keep it fast.
+            max_output_tokens=MAX_OUTPUT_TOKENS,
+            thinking_config=types.ThinkingConfig(thinking_level=self.thinking_level),
             http_options=types.HttpOptions(timeout=int(timeout * 1000)),
         )
         client = _gemini_client(
@@ -85,13 +90,18 @@ class GeminiProvider:
 
 
 _FAKE_REPORT = {
-    "summary": "Fake AI provider output for local development and tests.",
-    "key_points": ["This report was generated without calling a real model."],
+    "summary": "🧪 Sample brief from the fake AI provider, so the demo works without an API key.",
+    "key_points": [
+        "🧪 Generated locally: no real model read this document",
+        "⚡ Returns instantly, so loading and layout are easy to check",
+        "🔑 Set GEMINI_API_KEY to get real briefs",
+    ],
     "missing_items": [],
     "risk_flags": [],
     "suggested_decision": "needs_more_info",
-    "rationale": "The fake provider does not read the document.",
+    "rationale": "The fake provider does not read the document, so it can't judge it.",
     "suggested_rejection_note": None,
+    "suggested_approval_note": None,
 }
 
 
@@ -123,14 +133,18 @@ def get_provider() -> AssistProvider | None:
     if choice == "fake":
         return FakeProvider()
     if choice == "gemini" and settings.GEMINI_API_KEY:
-        return GeminiProvider(settings.GEMINI_API_KEY, settings.GEMINI_MODEL)
+        return GeminiProvider(
+            settings.GEMINI_API_KEY, settings.GEMINI_MODEL, settings.GEMINI_THINKING_LEVEL
+        )
     return None
 
 
 def get_fallback_provider() -> AssistProvider | None:
-    """Return the Gemini model used for the retry, if one is configured and differs."""
+    """Return the fast Gemini model raced against (or retried after) the primary, if any."""
     primary = get_provider()
     fallback = settings.GEMINI_FALLBACK_MODEL
     if not isinstance(primary, GeminiProvider) or not fallback or fallback == primary.model:
         return None
-    return GeminiProvider(settings.GEMINI_API_KEY, fallback)
+    return GeminiProvider(
+        settings.GEMINI_API_KEY, fallback, settings.GEMINI_FALLBACK_THINKING_LEVEL
+    )

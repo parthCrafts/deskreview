@@ -12,20 +12,31 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useLogout, useMe } from '@/features/auth/useMe'
+import { ROLE_LABEL } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import type { User } from '@/api/types'
 
-const ROLE_LABEL = { reviewer: 'Reviewer', submitter: 'Submitter' } as const
+/** Main navigation for a role. Admins oversee; they don't submit or review. */
+function linksFor(role: User['role']): { to: string; label: string }[] {
+  if (role === 'admin') {
+    return [
+      { to: '/manage/documents', label: 'Documents' },
+      { to: '/manage/users', label: 'Users' },
+    ]
+  }
+  return [
+    ...(role === 'reviewer' ? [{ to: '/review', label: 'Reviews' }] : []),
+    { to: '/submit', label: 'Submit' },
+    { to: '/documents', label: 'My submissions' },
+  ]
+}
 
 /** Signed-in layout: header with role-based navigation and the user menu. */
 export function AppShell() {
   const { data: me } = useMe()
   const logout = useLogout()
   if (!me) return null
-  const links = [
-    ...(me.role === 'reviewer' ? [{ to: '/review', label: 'Review queue' }] : []),
-    { to: '/submit', label: 'Submit' },
-    { to: '/documents', label: 'My submissions' },
-  ]
+  const links = linksFor(me.role)
   return (
     <div className="min-h-dvh">
       <a
@@ -39,7 +50,7 @@ export function AppShell() {
           <Link to="/" className="rounded-md">
             <Logo />
           </Link>
-          <nav aria-label="Main" className="order-last -mx-1 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
+          <nav aria-label="Main" className="order-last -mx-1 flex w-full gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:order-none sm:w-auto">
             {links.map((link) => (
               <NavLink
                 key={link.to}
@@ -55,7 +66,8 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-auto gap-2 py-1.5" aria-label={`${me.display_name}, ${ROLE_LABEL[me.role]}`}>
@@ -79,8 +91,6 @@ export function AppShell() {
                     {me.username}, {ROLE_LABEL[me.role].toLowerCase()}
                   </span>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <ThemeToggle />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => logout.mutate()}>
                   <LogOut aria-hidden /> Log out

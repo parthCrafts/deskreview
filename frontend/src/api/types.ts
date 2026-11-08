@@ -1,4 +1,4 @@
-export type Role = 'submitter' | 'reviewer'
+export type Role = 'submitter' | 'reviewer' | 'admin'
 export type Status = 'pending' | 'approved' | 'rejected'
 export type Decision = 'approve' | 'reject'
 
@@ -48,11 +48,11 @@ export interface DocumentSummary {
   created_at: string
   decided_at: string | null
   decided_by: UserRef | null
+  decision_comment: string | null
 }
 
 export interface DocumentDetail extends DocumentSummary {
   text: string | null
-  decision_comment: string | null
   can_review: boolean
   events: DocEvent[]
 }
@@ -81,6 +81,8 @@ export interface AssistReport {
   suggested_decision: 'approve' | 'reject' | 'needs_more_info'
   rationale: string
   suggested_rejection_note: string | null
+  /** Missing on briefs saved before approval notes existed. */
+  suggested_approval_note?: string | null
 }
 
 export type AssistResponse =
@@ -98,3 +100,18 @@ export type AssistResponse =
       reason: 'not_configured' | 'timeout' | 'provider_error' | 'invalid_output' | 'unsupported_content'
       message: string
     }
+  | { status: 'empty'; notice: string }
+
+/** A user with activity counts, as the admin Users tab shows it. */
+export interface AdminUser {
+  id: number
+  username: string
+  display_name: string
+  role: Role
+  is_active: boolean
+  is_demo: boolean
+  date_joined: string
+  last_login: string | null
+  submissions: { total: number; pending: number; approved: number; rejected: number }
+  reviews: { total: number; approved: number; rejected: number }
+}

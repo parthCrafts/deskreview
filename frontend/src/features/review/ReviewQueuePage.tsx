@@ -41,7 +41,7 @@ export function ReviewQueuePage() {
   return (
     <>
       <PageHeader
-        title="Review queue"
+        title="Reviews"
         description="Every submission, with what still needs a decision first."
         actions={
           <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)}>

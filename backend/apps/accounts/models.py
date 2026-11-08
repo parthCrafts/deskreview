@@ -5,10 +5,11 @@ from django.db import models
 
 
 class Role(models.TextChoices):
-    """The two application roles."""
+    """The application roles."""
 
     SUBMITTER = "submitter", "Submitter"
     REVIEWER = "reviewer", "Reviewer"
+    ADMIN = "admin", "Admin"
 
 
 class User(AbstractUser):
@@ -22,6 +23,16 @@ class User(AbstractUser):
     def is_reviewer(self) -> bool:
         """Whether this user may review documents."""
         return self.role == Role.REVIEWER
+
+    @property
+    def is_admin(self) -> bool:
+        """Whether this user oversees everything (read-only: admins never decide documents)."""
+        return self.role == Role.ADMIN
+
+    @property
+    def sees_all_documents(self) -> bool:
+        """Reviewers and admins see every document; submitters only their own."""
+        return self.is_reviewer or self.is_admin
 
     def __str__(self) -> str:
         """Show the display name, falling back to the username."""

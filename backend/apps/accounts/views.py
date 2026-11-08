@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.accounts import services
 from apps.accounts.serializers import (
+    AdminUserSerializer,
     DemoLoginSerializer,
     DemoUserSerializer,
     LoginSerializer,
@@ -95,3 +96,16 @@ class LogoutView(APIView):
         """Log out."""
         django_logout(request)
         return Response(status=204)
+
+
+class AdminUsersView(APIView):
+    """Every user with their activity, for the admin Users tab."""
+
+    @extend_schema(
+        operation_id="admin_users_list",
+        responses={200: AdminUserSerializer(many=True), 401: ErrorSerializer, 403: ErrorSerializer},
+    )
+    def get(self, request):
+        """List users with submission and review counts (admins only)."""
+        users = services.list_users_with_activity(request.user)
+        return Response(AdminUserSerializer(users, many=True).data)

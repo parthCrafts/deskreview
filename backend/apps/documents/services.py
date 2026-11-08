@@ -12,7 +12,6 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.documents.domain import (
-    MAX_COMMENT_LENGTH,
     CommentRequired,
     Decision,
     InvalidTransition,
@@ -21,7 +20,7 @@ from apps.documents.domain import (
     event_type_for,
 )
 from apps.documents.models import Document, DocumentEvent, EventType, Kind
-from apps.documents.validation import inspect_file, validate_submission
+from apps.documents.validation import comment_errors, inspect_file, validate_submission
 from common.errors import Conflict, Forbidden, NotFound, ValidationFailed
 
 logger = logging.getLogger("deskreview.documents")
@@ -79,16 +78,16 @@ def submit_document(
 
 
 def visible_documents(actor: User) -> QuerySet[Document]:
-    """Every document for reviewers; only their own for everyone else."""
+    """Every document for reviewers and admins; only their own for submitters."""
     documents = Document.objects.all()
-    return documents if actor.is_reviewer else documents.filter(submitter=actor)
+    return documents if actor.sees_all_documents else documents.filter(submitter=actor)
 
 
 def list_documents(
     actor: User, *, scope: str | None, status: Status | None, q: str
 ) -> tuple[QuerySet[Document], dict[str, int]]:
     """Return the visible documents matching the filters, plus per-status counts."""
-    scope = scope or ("all" if actor.is_reviewer else "mine")
+    scope = scope or ("all" if actor.sees_all_documents else "mine")
     documents = visible_documents(actor)
     if scope == "mine":
         documents = documents.filter(submitter=actor)
@@ -178,10 +177,8 @@ def review_document(
         logger.info("review.conflict", extra={"document_id": str(document.id), "user_id": actor.pk})
         raise _conflict(document.id) from None
     clean_comment = (comment or "").strip() or None
-    if clean_comment and len(clean_comment) > MAX_COMMENT_LENGTH:
-        raise ValidationFailed(
-            fields={"comment": [f"Comment must be at most {MAX_COMMENT_LENGTH:,} characters."]}
-        )
+    if clean_comment and (problems := comment_errors(clean_comment, decision)):
+        raise ValidationFailed(fields={"comment": problems})
     with transaction.atomic():
         if _apply_decision(document.id, Status.PENDING, new_status, actor, clean_comment) == 0:
             logger.info(

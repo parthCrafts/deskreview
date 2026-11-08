@@ -46,7 +46,9 @@ def test_stale_read_through_service_is_conflict(
 
     monkeypatch.setattr(services, "decide", racing_decide)
     with pytest.raises(Conflict) as e:
-        review_document(reviewer, str(doc.id), decision=Decision.REJECT, comment="no")
+        review_document(
+            reviewer, str(doc.id), decision=Decision.REJECT, comment="Missing signature"
+        )
     assert e.value.details["status"] == "approved" and e.value.details["decided_by"] == "Sam Lee"
     assert doc.events.exclude(type="submitted").count() == 1
 
@@ -72,7 +74,10 @@ def test_concurrent_reviews_exactly_one_wins(
 
     threads = [
         threading.Thread(target=run, args=a)
-        for a in [(reviewer, Decision.APPROVE, None), (reviewer2, Decision.REJECT, "no")]
+        for a in [
+            (reviewer, Decision.APPROVE, None),
+            (reviewer2, Decision.REJECT, "Missing signature"),
+        ]
     ]
     for t in threads:
         t.start()

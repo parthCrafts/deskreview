@@ -3,22 +3,26 @@ import { apiFetch } from '@/api/client'
 import { qk } from '@/api/keys'
 import type { AssistResponse } from '@/api/types'
 
-/** Generate (or fetch the cached) AI report on demand and keep the latest in the query cache. */
+const url = (id: string) => `/api/v1/documents/${encodeURIComponent(id)}/assist`
+
+/**
+ * The document's saved AI brief, loaded with the page, plus a generate/regenerate action.
+ * A successful regenerate replaces the saved brief; a failed one leaves it in place and is
+ * reported through `generate.data` / `generate.error` instead.
+ */
 export function useAssist(id: string) {
   const queryClient = useQueryClient()
-  const latest = useQuery<AssistResponse | null>({
+  const saved = useQuery({
     queryKey: qk.assist(id),
-    queryFn: () => null,
-    enabled: false,
+    queryFn: () => apiFetch<AssistResponse>(url(id)),
     staleTime: Infinity,
   })
   const generate = useMutation({
     mutationFn: ({ refresh = false }: { refresh?: boolean } = {}) =>
-      apiFetch<AssistResponse>(
-        `/api/v1/documents/${encodeURIComponent(id)}/assist${refresh ? '?refresh=true' : ''}`,
-        { method: 'POST' },
-      ),
-    onSuccess: (data) => queryClient.setQueryData(qk.assist(id), data),
+      apiFetch<AssistResponse>(`${url(id)}${refresh ? '?refresh=true' : ''}`, { method: 'POST' }),
+    onSuccess: (data) => {
+      if (data.status === 'ok') queryClient.setQueryData(qk.assist(id), data)
+    },
   })
-  return { data: latest.data ?? null, generate }
+  return { saved, generate }
 }
