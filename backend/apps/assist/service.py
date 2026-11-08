@@ -21,7 +21,7 @@ from apps.assist.models import AssistResult
 from apps.assist.prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_prompt, detect_injection
 from apps.assist.providers import (
     ProviderTimeout,
-    get_fallback_provider,
+    get_fallback_providers,
     get_provider,
 )
 from apps.assist.schema import AssistReport, RiskFlag
@@ -30,7 +30,6 @@ from common.errors import Forbidden
 
 logger = logging.getLogger("deskreview.assist")
 
-MAX_ATTEMPTS = 2
 INJECTION_FLAG = "Document contains instructions aimed at the AI reviewer"
 FALLBACK_MESSAGES = {
     "not_configured": "AI Assist is off: no API key configured.",
@@ -191,8 +190,10 @@ def get_or_generate_assist(
     except UnsupportedContent:
         return _unavailable("unsupported_content", doc_id)
 
-    # The fallback model (when configured) races a slow primary and takes over a failed one.
-    attempts = [provider, get_fallback_provider() or provider][:MAX_ATTEMPTS]
+    # Fallback models (when configured) race a slow model before them and take over a failed
+    # one, in order. With none, the primary gets one retry.
+    fallbacks = get_fallback_providers()
+    attempts = [provider, *fallbacks] if fallbacks else [provider, provider]
     key = {
         "document": document,
         "content_sha256": hashlib.sha256(text.encode()).hexdigest(),

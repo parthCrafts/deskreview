@@ -121,11 +121,13 @@ DEMO_LOGIN_ENABLED = env_bool("DEMO_LOGIN_ENABLED", True)
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "deskreview-demo")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-# Primary: the most capable Flash model at its lowest thinking level (3.8 Flash has no "minimal").
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+# Comma-separated models: the first is the primary, every one after it is a fallback, tried in
+# order. Each fallback races a slow model before it (after AI_HEDGE_SECONDS) and takes over a
+# failed one. Default primary: the most capable Flash model at its lowest thinking level (3.8
+# Flash has no "minimal"); default fallback: the fastest model.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash,gemini-3.5-flash-lite"
 GEMINI_THINKING_LEVEL = os.environ.get("GEMINI_THINKING_LEVEL", "low")
-# Fallback: the fastest model, raced against the primary when it is slow and used when it fails.
-GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+# Thinking level used by every fallback model.
 GEMINI_FALLBACK_THINKING_LEVEL = os.environ.get("GEMINI_FALLBACK_THINKING_LEVEL", "minimal")
 AI_PROVIDER = os.environ.get("AI_PROVIDER") or ("gemini" if GEMINI_API_KEY else "none")
 # Per-call timeout; a stuck call is abandoned after this many seconds.
