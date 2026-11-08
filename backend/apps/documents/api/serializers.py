@@ -42,7 +42,7 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class DocumentSummarySerializer(serializers.ModelSerializer):
-    """A document as shown in lists (no body, no events)."""
+    """A document as shown in lists (no body, no events), with its decision note."""
 
     submitter = UserRefSerializer()
     decided_by = UserRefSerializer(allow_null=True)
@@ -60,6 +60,7 @@ class DocumentSummarySerializer(serializers.ModelSerializer):
             "created_at",
             "decided_at",
             "decided_by",
+            "decision_comment",
         ]
 
     @extend_schema_field(FileMetaSerializer(allow_null=True))
@@ -78,7 +79,6 @@ class DocumentDetailSerializer(DocumentSummarySerializer):
     class Meta(DocumentSummarySerializer.Meta):
         fields = DocumentSummarySerializer.Meta.fields + [
             "text",
-            "decision_comment",
             "can_review",
             "events",
         ]

@@ -43,9 +43,18 @@ export function ReviewDocumentPage() {
         {(doc) => (
           <DocumentLayout
             doc={doc}
-            back={{ to: '/review', label: 'Review queue' }}
-            aside={<ReviewActions ref={actions} doc={doc} onDecided={goNext} />}
-            below={<AssistPanel doc={doc} onUseAsRejectionNote={(note) => actions.current?.openReject(note)} />}
+            back={{ to: '/review', label: 'Reviews' }}
+            aside={
+              <>
+                <AssistPanel
+                  doc={doc}
+                  onUseNote={(decision, note) =>
+                    decision === 'approve' ? actions.current?.openApprove(note) : actions.current?.openReject(note)
+                  }
+                />
+                <ReviewActions ref={actions} doc={doc} onDecided={goNext} />
+              </>
+            }
           />
         )}
       </DocumentLoader>

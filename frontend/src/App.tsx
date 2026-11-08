@@ -6,6 +6,9 @@ import { setUnauthorizedHandler } from '@/api/client'
 import { qk } from '@/api/keys'
 import { AppShell } from '@/components/AppShell'
 import { NotFoundPage } from '@/components/NotFoundPage'
+import { AdminDocumentPage } from '@/features/admin/AdminDocumentPage'
+import { AdminDocumentsPage } from '@/features/admin/AdminDocumentsPage'
+import { AdminUsersPage } from '@/features/admin/AdminUsersPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { homePath, useMe } from '@/features/auth/useMe'
@@ -52,6 +55,11 @@ export default function App() {
             <Route element={<RequireAuth requiredRole="reviewer" />}>
               <Route path="review" element={<ReviewQueuePage />} />
               <Route path="review/:id" element={<ReviewDocumentPage />} />
+            </Route>
+            <Route element={<RequireAuth requiredRole="admin" />}>
+              <Route path="manage/documents" element={<AdminDocumentsPage />} />
+              <Route path="manage/documents/:id" element={<AdminDocumentPage />} />
+              <Route path="manage/users" element={<AdminUsersPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>

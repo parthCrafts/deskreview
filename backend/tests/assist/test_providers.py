@@ -80,6 +80,20 @@ def test_gemini_sends_schema_and_settings(monkeypatch):
     assert config.response_mime_type == "application/json" and config.temperature == 0.2
     assert config.system_instruction == "sys" and config.http_options.timeout == 12_000
     assert config.thinking_config.thinking_level == "LOW"
+    assert config.max_output_tokens == providers.MAX_OUTPUT_TOKENS
+
+
+def test_models_and_thinking_levels(settings):
+    """The primary is the capable model at low thinking; the fallback is fast at minimal."""
+    from apps.assist.providers import get_fallback_provider
+
+    settings.AI_PROVIDER, settings.GEMINI_API_KEY = "gemini", "k"
+    settings.GEMINI_MODEL, settings.GEMINI_THINKING_LEVEL = "gemini-3.8-flash", "low"
+    settings.GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite"
+    settings.GEMINI_FALLBACK_THINKING_LEVEL = "minimal"
+    assert (get_provider().model, get_provider().thinking_level) == ("gemini-3.8-flash", "low")
+    fallback = get_fallback_provider()
+    assert (fallback.model, fallback.thinking_level) == ("gemini-3.5-flash-lite", "minimal")
 
 
 def test_fallback_provider_selection(settings):

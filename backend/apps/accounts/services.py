@@ -2,10 +2,10 @@
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login
-from django.db.models import QuerySet
+from django.db.models import Count, Q, QuerySet
 
-from apps.accounts.models import User
-from common.errors import InvalidCredentials, NotFound
+from apps.accounts.models import Role, User
+from common.errors import Forbidden, InvalidCredentials, NotFound
 
 _MODEL_BACKEND = "django.contrib.auth.backends.ModelBackend"
 
@@ -33,3 +33,25 @@ def demo_login(request, username: str) -> User:
         raise NotFound()
     login(request, user, backend=_MODEL_BACKEND)
     return user
+
+
+def list_users_with_activity(actor: User) -> list[User]:
+    """Every user with submission and review counts, for admins only."""
+    if not actor.is_admin:
+        raise Forbidden()
+    role_order = {Role.ADMIN: 0, Role.REVIEWER: 1, Role.SUBMITTER: 2}
+    submitted = {
+        "submitted_total": Count("documents", distinct=True),
+        **{
+            f"submitted_{status}": Count(
+                "documents", filter=Q(documents__status=status), distinct=True
+            )
+            for status in ("pending", "approved", "rejected")
+        },
+    }
+    reviewed = {
+        f"reviewed_{status}": Count("decisions", filter=Q(decisions__status=status), distinct=True)
+        for status in ("approved", "rejected")
+    }
+    users = User.objects.annotate(**submitted, **reviewed)
+    return sorted(users, key=lambda u: (role_order.get(u.role, 9), u.display_name or u.username))

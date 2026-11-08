@@ -6,6 +6,7 @@ import type { DemoUser, User } from '@/api/types'
 
 /** Where a user lands after signing in. */
 export function homePath(user: Pick<User, 'role'>): string {
+  if (user.role === 'admin') return '/manage/documents'
   return user.role === 'reviewer' ? '/review' : '/documents'
 }
 

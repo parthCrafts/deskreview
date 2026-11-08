@@ -9,11 +9,22 @@ from dataclasses import dataclass
 
 from django.core.files.uploadedfile import UploadedFile
 
+from apps.documents.domain import MAX_COMMENT_LENGTH
 from common.errors import PayloadTooLarge, UnsupportedMedia, ValidationFailed
 
+MIN_TITLE = 3
 MAX_TITLE = 200
+MAX_TITLE_WORD = 60
+MIN_TEXT = 10
 MAX_TEXT = 50_000
+MAX_TEXT_WORD = 500
 MAX_FILENAME = 255
+MIN_REJECT_COMMENT = 10
+
+# Control characters other than tab, newline and carriage return (e.g. NUL, backspace, ESC).
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_TITLE_BREAKS = re.compile(r"[\t\r\n]")
+_ALNUM = re.compile(r"[^\W_]")  # any letter or digit, in any script
 
 ALLOWED: dict[str, tuple[str, frozenset[str]]] = {
     "pdf": ("application/pdf", frozenset({".pdf"})),
@@ -51,6 +62,57 @@ class SubmissionInput:
     file: UploadedFile | None
 
 
+def _longest_word(text: str) -> int:
+    """Length of the longest run of non-space characters."""
+    return max((len(word) for word in text.split()), default=0)
+
+
+def title_errors(title: str) -> list[str]:
+    """Rule violations for an already-trimmed title (empty list when it is fine)."""
+    if not title:
+        return ["Title is required."]
+    if len(title) > MAX_TITLE:
+        return [f"Title must be at most {MAX_TITLE} characters."]
+    if len(title) < MIN_TITLE:
+        return [f"Title must be at least {MIN_TITLE} characters."]
+    if _TITLE_BREAKS.search(title) or _CONTROL.search(title):
+        return ["Title must be a single line without special control characters."]
+    if not _ALNUM.search(title):
+        return ["Title must include at least one letter or number."]
+    if _longest_word(title) > MAX_TITLE_WORD:
+        return [f"Title has a word longer than {MAX_TITLE_WORD} characters. Add spaces."]
+    return []
+
+
+def text_errors(text: str) -> list[str]:
+    """Rule violations for already-trimmed, non-empty document text."""
+    if len(text) > MAX_TEXT:
+        return [f"Text must be at most {MAX_TEXT:,} characters."]
+    if len(text) < MIN_TEXT:
+        return [f"Text must be at least {MIN_TEXT} characters so a reviewer has something to read."]
+    if _CONTROL.search(text):
+        return ["Text contains control characters. Paste it as plain text."]
+    if not _ALNUM.search(text):
+        return ["Text must include letters or numbers."]
+    if _longest_word(text) > MAX_TEXT_WORD:
+        return [
+            f"Text has an unbroken run longer than {MAX_TEXT_WORD} characters. "
+            "Is it pasted data rather than a document?"
+        ]
+    return []
+
+
+def comment_errors(comment: str, decision: str) -> list[str]:
+    """Rule violations for a trimmed, non-empty review comment."""
+    if len(comment) > MAX_COMMENT_LENGTH:
+        return [f"Comment must be at most {MAX_COMMENT_LENGTH:,} characters."]
+    if decision == "reject" and len(comment) < MIN_REJECT_COMMENT:
+        return [f"Give the submitter a bit more detail: at least {MIN_REJECT_COMMENT} characters."]
+    if _CONTROL.search(comment):
+        return ["Comment contains control characters. Paste it as plain text."]
+    return []
+
+
 def validate_submission(
     title: str | None, text: str | None, file: UploadedFile | None
 ) -> SubmissionInput:
@@ -58,10 +120,8 @@ def validate_submission(
     fields: dict[str, list[str]] = {}
     message = None
     clean_title = (title or "").strip()
-    if not clean_title:
-        fields["title"] = ["Title is required."]
-    elif len(clean_title) > MAX_TITLE:
-        fields["title"] = [f"Title must be at most {MAX_TITLE} characters."]
+    if problems := title_errors(clean_title):
+        fields["title"] = problems
 
     clean_text = (text or "").strip() or None
     if clean_text and file is not None:
@@ -71,8 +131,8 @@ def validate_submission(
     if message:
         fields["text"] = [message]
         fields["file"] = [message]
-    elif clean_text and len(clean_text) > MAX_TEXT:
-        fields["text"] = [f"Text must be at most {MAX_TEXT:,} characters."]
+    elif clean_text and (problems := text_errors(clean_text)):
+        fields["text"] = problems
     elif file is not None and file.size == 0:
         fields["file"] = ["File is empty."]
 

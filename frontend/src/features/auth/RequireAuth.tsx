@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 import type { Role } from '@/api/types'
 import { ErrorState } from '@/components/ErrorState'
 import { FullPageLoader } from '@/components/FullPageLoader'
-import { useMe } from './useMe'
+import { homePath, useMe } from './useMe'
 
 /** Gate routes on a session (and optionally a role); otherwise redirect. */
 export function RequireAuth({ requiredRole }: { requiredRole?: Role }) {
@@ -20,6 +20,6 @@ export function RequireAuth({ requiredRole }: { requiredRole?: Role }) {
     const next = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?next=${next}`} replace />
   }
-  if (requiredRole && me.data.role !== requiredRole) return <Navigate to="/documents" replace />
+  if (requiredRole && me.data.role !== requiredRole) return <Navigate to={homePath(me.data)} replace />
   return <Outlet />
 }

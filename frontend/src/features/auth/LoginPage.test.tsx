@@ -7,7 +7,7 @@ import { alice, errorResponse, rita } from '@/test/handlers'
 import { renderWithProviders } from '@/test/utils'
 
 describe('LoginPage', () => {
-  it('shows demo users grouped by role and logs in with one click', async () => {
+  it('lists every demo user with a role badge and logs in with one click', async () => {
     let posted: unknown
     server.use(
       http.post('/api/v1/auth/demo-login', async ({ request }) => {
@@ -16,13 +16,35 @@ describe('LoginPage', () => {
       }),
     )
     const { user } = renderWithProviders(<App />, { route: '/login' })
-    const reviewers = await screen.findByRole('group', { name: /reviewers/i })
-    expect(within(reviewers).getAllByRole('button')).toHaveLength(2)
-    const submitters = screen.getByRole('group', { name: /submitters/i })
-    expect(within(submitters).getByRole('button', { name: /alice chen/i })).toBeInTheDocument()
-    await user.click(within(reviewers).getByRole('button', { name: /rita shah/i }))
-    expect(await screen.findByRole('link', { name: /review queue/i })).toBeInTheDocument()
+    const accounts = await screen.findByRole('list')
+    const rows = within(accounts).getAllByRole('listitem')
+    expect(rows).toHaveLength(5)
+    expect(within(rows[0]).getByText('Avery Morgan')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Admin')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Reviewer')).toBeInTheDocument()
+    expect(within(rows[3]).getByText('Submitter')).toBeInTheDocument()
+    expect(within(rows[3]).getByText('@alice')).toBeInTheDocument()
+    expect(screen.queryByText(/every account uses/i)).not.toBeInTheDocument()
+    expect(within(accounts).getAllByRole('button')).toHaveLength(5)
+    await user.click(screen.getByRole('button', { name: 'Sign in as Rita Shah' }))
+    expect(await screen.findByRole('link', { name: /^reviews$/i })).toBeInTheDocument()
     expect(posted).toEqual({ username: 'rita' })
+  })
+
+  it('rejects usernames with unexpected characters before calling the API', async () => {
+    const { user } = renderWithProviders(<App />, { route: '/login' })
+    await user.type(await screen.findByLabelText(/^username$/i), 'alice smith')
+    await user.type(screen.getByLabelText(/^password$/i), 'pw')
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+    expect(await screen.findByText(/usernames only use letters/i)).toBeInTheDocument()
+  })
+
+  it('can reveal the password', async () => {
+    const { user } = renderWithProviders(<App />, { route: '/login' })
+    const password = await screen.findByLabelText(/^password$/i)
+    expect(password).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(password).toHaveAttribute('type', 'text')
   })
 
   it('a slow initial session check cannot undo a fresh login', async () => {
@@ -34,10 +56,10 @@ describe('LoginPage', () => {
       http.post('/api/v1/auth/demo-login', () => HttpResponse.json(rita)),
     )
     const { user } = renderWithProviders(<App />, { route: '/login' })
-    await user.click(await screen.findByRole('button', { name: /rita shah/i }))
-    expect(await screen.findByRole('link', { name: /review queue/i })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Sign in as Rita Shah' }))
+    expect(await screen.findByRole('link', { name: /^reviews$/i })).toBeInTheDocument()
     await delay(500)
-    expect(screen.getByRole('link', { name: /review queue/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^reviews$/i })).toBeInTheDocument()
   })
 
   it('logs in with username and password and goes to next', async () => {
@@ -73,7 +95,7 @@ describe('LoginPage', () => {
     server.use(http.get('/api/v1/auth/demo-users', () => errorResponse(404, 'not_found', 'Not found.')))
     renderWithProviders(<App />, { route: '/login' })
     expect(await screen.findByLabelText(/^username$/i)).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: /reviewers/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /demo users/i })).not.toBeInTheDocument()
   })
 
   it('ignores an off-site next parameter', async () => {

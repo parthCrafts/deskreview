@@ -5,7 +5,7 @@ FRONTEND := cd frontend &&
 # Production-like settings shared by prod-local and the E2E server.
 PROD_ENV := DEBUG=false SECURE_COOKIES=false SECRET_KEY=local-prod-check \
 	ALLOWED_HOSTS=127.0.0.1,localhost FILE_STORAGE=database DEMO_LOGIN_ENABLED=true
-E2E_ENV := $(PROD_ENV) DATABASE_URL=sqlite:///$(CURDIR)/.e2e/db.sqlite3 AI_PROVIDER=fake \
+E2E_ENV := $(PROD_ENV) DATABASE_URL=sqlite:///$(CURDIR)/.e2e/db.sqlite3 AI_PROVIDER=fake GEMINI_API_KEY= \
 	CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8001 LOG_LEVEL=WARNING
 
 .PHONY: setup db migrate seed dev dev-backend dev-frontend build prod-local e2e-server \

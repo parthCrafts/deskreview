@@ -17,6 +17,21 @@ def _user(username: str, display_name: str, role: str) -> User:
     )
 
 
+class LiveAICallBlocked(RuntimeError):
+    """Raised if any test tries to build a real Gemini client."""
+
+
+@pytest.fixture(autouse=True)
+def _no_live_ai(monkeypatch):
+    """Fail loudly on any real AI call; tests that need the client patch in a stand-in."""
+    from apps.assist import providers
+
+    def _blocked(api_key: str):
+        raise LiveAICallBlocked("Tests must never call a live AI model. Patch _gemini_client.")
+
+    monkeypatch.setattr(providers, "_gemini_client", _blocked)
+
+
 @pytest.fixture
 def api_client() -> APIClient:
     """A DRF test client."""
@@ -45,6 +60,12 @@ def reviewer(db) -> User:
 def reviewer2(db) -> User:
     """Sam, a second reviewer."""
     return _user("sam", "Sam Lee", Role.REVIEWER)
+
+
+@pytest.fixture
+def admin_user(db) -> User:
+    """Avery, an admin (read-only oversight)."""
+    return _user("admin", "Avery Morgan", Role.ADMIN)
 
 
 @pytest.fixture

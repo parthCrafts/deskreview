@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 const GROUPS = [
   {
-    title: 'Review queue',
+    title: 'Reviews',
     keys: [
       ['j', 'Select next document'],
       ['k', 'Select previous document'],

@@ -27,6 +27,7 @@ class AssistReport(BaseModel):
     suggested_decision: Literal["approve", "reject", "needs_more_info"]
     rationale: str = Field(max_length=600)
     suggested_rejection_note: str | None = Field(default=None, max_length=1000)
+    suggested_approval_note: str | None = Field(default=None, max_length=600)
 
 
 def _string_list(max_items: int) -> dict:
@@ -58,6 +59,7 @@ GEMINI_RESPONSE_SCHEMA: dict = {
         "suggested_decision": {"type": "STRING", "enum": ["approve", "reject", "needs_more_info"]},
         "rationale": {"type": "STRING", "max_length": 600},
         "suggested_rejection_note": {"type": "STRING", "nullable": True, "max_length": 1000},
+        "suggested_approval_note": {"type": "STRING", "nullable": True, "max_length": 600},
     },
     "required": list(AssistReport.model_fields),
     "property_ordering": list(AssistReport.model_fields),

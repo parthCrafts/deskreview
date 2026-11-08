@@ -7,12 +7,13 @@ from apps.documents.services import review_document
 
 
 def test_seed_creates_users_and_samples(db, settings):
-    """The seed creates four demo users and six documents across all statuses."""
+    """The seed creates five demo users (one admin) and six documents across all statuses."""
     settings.DEMO_PASSWORD = "secret-demo"
     call_command("seed_demo")
     users = User.objects.filter(is_demo=True)
-    assert set(users.values_list("username", flat=True)) == {"alice", "ben", "rita", "sam"}
+    assert set(users.values_list("username", flat=True)) == {"admin", "alice", "ben", "rita", "sam"}
     assert User.objects.get(username="rita").is_reviewer
+    assert User.objects.get(username="admin").is_admin
     assert User.objects.get(username="alice").check_password("secret-demo")
     assert Document.objects.count() == 6
     assert Document.objects.filter(status="pending").count() == 3
@@ -33,7 +34,7 @@ def test_seed_is_idempotent(db):
     """Running the seed twice changes nothing."""
     call_command("seed_demo")
     call_command("seed_demo")
-    assert Document.objects.count() == 6 and User.objects.filter(is_demo=True).count() == 4
+    assert Document.objects.count() == 6 and User.objects.filter(is_demo=True).count() == 5
 
 
 def test_seed_repairs_demo_users(db):

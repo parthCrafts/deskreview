@@ -7,7 +7,7 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.assist.service import get_or_generate_assist
+from apps.assist.service import get_or_generate_assist, get_saved_assist
 from common.errors import ErrorSerializer
 from common.throttles import AssistThrottle
 
@@ -17,7 +17,7 @@ NOTICE = "Advisory only. You make the decision."
 class AssistResponseSerializer(serializers.Serializer):
     """An AI report, or the reason none is available (both are HTTP 200)."""
 
-    status = serializers.ChoiceField(choices=["ok", "unavailable"])
+    status = serializers.ChoiceField(choices=["ok", "unavailable", "empty"])
     reason = serializers.CharField(allow_null=True)
     message = serializers.CharField(allow_null=True)
     report = serializers.DictField(allow_null=True)
@@ -29,9 +29,20 @@ class AssistResponseSerializer(serializers.Serializer):
 
 
 class DocumentAssistView(APIView):
-    """AI Review Assist for one document (reviewers only, throttled)."""
+    """AI Review Assist for one document: reviewers generate (throttled), admins only read."""
 
-    throttle_classes = [AssistThrottle]
+    def get_throttles(self):
+        """Only generating costs a model call, so loading the saved brief isn't throttled."""
+        return [AssistThrottle()] if self.request.method == "POST" else []
+
+    @extend_schema(
+        operation_id="documents_assist_saved",
+        responses={200: AssistResponseSerializer, **{code: ErrorSerializer for code in (403, 404)}},
+    )
+    def get(self, request, document_id: str):
+        """Return the saved brief, or status "empty" if none was generated yet."""
+        outcome = get_saved_assist(request.user, document_id)
+        return Response(AssistResponseSerializer({**asdict(outcome), "notice": NOTICE}).data)
 
     @extend_schema(
         operation_id="documents_assist",

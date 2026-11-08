@@ -59,3 +59,44 @@ def test_api_throttle(api_client, reviewer, submitter, make_document, auth, fake
         assert client.post(URL.format(doc.id)).status_code == 200
     r = client.post(URL.format(doc.id))
     assert r.status_code == 429 and r.json()["error"]["code"] == "throttled"
+
+
+def test_api_get_returns_saved_brief(
+    api_client, reviewer, submitter, make_document, auth, fake, valid_report
+):
+    """GET loads the saved brief without calling the model."""
+    provider = fake([valid_report])
+    doc = make_document(submitter)
+    client = auth(api_client, reviewer)
+    assert client.get(URL.format(doc.id)).json()["status"] == "empty"
+    client.post(URL.format(doc.id))
+    body = client.get(URL.format(doc.id)).json()
+    assert body["status"] == "ok" and body["report"]["summary"] == valid_report["summary"]
+    assert body["notice"] and provider.calls == 1
+
+
+def test_api_get_is_not_throttled(api_client, reviewer, submitter, make_document, auth, fake):
+    """Opening documents doesn't use up the hourly generate allowance."""
+    fake()
+    doc = make_document(submitter)
+    client = auth(api_client, reviewer)
+    for _ in range(25):
+        assert client.get(URL.format(doc.id)).status_code == 200
+    assert client.post(URL.format(doc.id)).status_code == 200
+
+
+def test_api_admin_can_read_not_generate(
+    api_client, admin_user, submitter, make_document, auth, fake
+):
+    """Admins can load the saved brief but not generate one."""
+    fake()
+    doc = make_document(submitter)
+    client = auth(api_client, admin_user)
+    assert client.get(URL.format(doc.id)).status_code == 200
+    assert client.post(URL.format(doc.id)).status_code == 403
+
+
+def test_api_get_submitter_403(api_client, submitter, make_document, auth):
+    """Submitters can't load the brief."""
+    r = auth(api_client, submitter).get(URL.format(make_document(submitter).id))
+    assert r.status_code == 403

@@ -12,6 +12,7 @@ import { RejectDialog } from './RejectDialog'
 import { useReviewDocument } from './useReviewDocument'
 
 export interface ReviewActionsHandle {
+  openApprove: (prefill?: string) => void
   openReject: (prefill?: string) => void
 }
 
@@ -32,19 +33,15 @@ export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDeta
     const reason = blockedReason(doc, me?.id)
     const close = () => setDialog(null)
 
-    const openReject = (note = '') => {
+    const open = (which: 'approve' | 'reject', note = '') => {
       if (reason) return
       setPrefill(note)
-      setDialog('reject')
+      setDialog(which)
     }
-    useImperativeHandle(ref, () => ({ openReject }))
-    useHotkeys(
-      {
-        a: () => setDialog('approve'),
-        r: () => openReject(),
-      },
-      { enabled: !reason },
-    )
+    const openApprove = (note?: string) => open('approve', note)
+    const openReject = (note?: string) => open('reject', note)
+    useImperativeHandle(ref, () => ({ openApprove, openReject }))
+    useHotkeys({ a: () => openApprove(), r: () => openReject() }, { enabled: !reason })
 
     const decide = async (decision: 'approve' | 'reject', comment: string | null) => {
       try {
@@ -61,7 +58,7 @@ export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDeta
     return (
       <section aria-label="Decision actions" className="space-y-3 rounded-lg border bg-card p-4">
         <div className="grid grid-cols-2 gap-2">
-          <Button disabled={!!reason} onClick={() => setDialog('approve')} aria-keyshortcuts="a">
+          <Button disabled={!!reason} onClick={() => openApprove()} aria-keyshortcuts="a">
             <Check aria-hidden /> Approve <Kbd>a</Kbd>
           </Button>
           <Button variant="destructive" disabled={!!reason} onClick={() => openReject()} aria-keyshortcuts="r">
@@ -73,6 +70,7 @@ export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDeta
           open={dialog === 'approve'}
           onOpenChange={(open) => !open && close()}
           title={doc.title}
+          initialComment={prefill}
           pending={review.isPending}
           onConfirm={(comment) =>
             decide('approve', comment).catch((error) => {

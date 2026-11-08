@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useRef } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { CharCount } from '@/components/CharCount'
 import { PageHeader } from '@/components/PageHeader'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toastApiError } from '@/lib/errors'
 import { applyServerErrors } from '@/lib/forms'
 import { FileDropzone } from './FileDropzone'
-import { MAX_TEXT, submitSchema, type SubmitValues } from './schema'
+import { MAX_TEXT, MAX_TITLE, MIN_TEXT, MIN_TITLE, submitSchema, type SubmitValues } from './schema'
 import { useSubmitDocument } from './useSubmitDocument'
 
 const FIELDS = ['title', 'text', 'file'] as const
@@ -23,11 +24,15 @@ export function SubmitPage() {
   const inFlight = useRef(false)
   const form = useForm<SubmitValues>({
     resolver: zodResolver(submitSchema),
+    // Check a field once the user leaves it, then re-check on every keystroke.
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: { title: '', mode: 'file', text: '', file: null },
   })
   const { errors, isSubmitting } = form.formState
   const mode = useWatch({ control: form.control, name: 'mode' })
-  const textLength = useWatch({ control: form.control, name: 'text' }).length
+  const textLength = useWatch({ control: form.control, name: 'text' }).trim().length
+  const titleLength = useWatch({ control: form.control, name: 'title' }).trim().length
   const busy = isSubmitting || submit.isPending
 
   const onSubmit = async (values: SubmitValues) => {
@@ -44,7 +49,7 @@ export function SubmitPage() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Submit a document" description="It goes straight into the review queue." />
+      <PageHeader title="Submit a document" description="It goes straight to the reviewers." />
       <form
         noValidate
         onSubmit={(event) => form.handleSubmit(onSubmit)(event)}
@@ -60,15 +65,21 @@ export function SubmitPage() {
           <Input
             id="title"
             placeholder="e.g. Q3 vendor contract"
+            maxLength={MAX_TITLE}
             aria-invalid={!!errors.title}
-            aria-describedby={errors.title ? 'title-error' : undefined}
+            aria-describedby={errors.title ? 'title-error title-count' : 'title-count'}
             {...form.register('title')}
           />
-          {errors.title && (
-            <p id="title-error" className="text-sm text-destructive">
-              {errors.title.message}
-            </p>
-          )}
+          <div className="flex justify-between gap-4 text-sm">
+            {errors.title ? (
+              <p id="title-error" className="text-destructive">
+                {errors.title.message}
+              </p>
+            ) : (
+              <span />
+            )}
+            <CharCount id="title-count" length={titleLength} max={MAX_TITLE} min={MIN_TITLE} />
+          </div>
         </div>
 
         <Tabs
@@ -106,7 +117,7 @@ export function SubmitPage() {
               rows={10}
               placeholder="Paste or write the document here."
               aria-invalid={!!errors.text}
-              aria-describedby={errors.text ? 'text-error' : 'text-count'}
+              aria-describedby={errors.text ? 'text-error text-count' : 'text-count'}
               {...form.register('text')}
             />
             <div className="flex justify-between gap-4 text-sm">
@@ -117,9 +128,7 @@ export function SubmitPage() {
               ) : (
                 <span />
               )}
-              <span id="text-count" className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {textLength.toLocaleString()} / {MAX_TEXT.toLocaleString()}
-              </span>
+              <CharCount id="text-count" length={textLength} max={MAX_TEXT} min={MIN_TEXT} />
             </div>
           </TabsContent>
         </Tabs>

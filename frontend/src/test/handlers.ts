@@ -1,15 +1,34 @@
 import { http, HttpResponse } from 'msw'
-import type { DocumentDetail, DocumentList, User } from '@/api/types'
+import type { AdminUser, DocumentDetail, DocumentList, User } from '@/api/types'
 
 export const alice: User = { id: 1, username: 'alice', display_name: 'Alice Chen', role: 'submitter' }
 export const rita: User = { id: 3, username: 'rita', display_name: 'Rita Shah', role: 'reviewer' }
+export const avery: User = { id: 5, username: 'admin', display_name: 'Avery Morgan', role: 'admin' }
 
 export const demoUsers = [
+  { username: 'admin', display_name: 'Avery Morgan', role: 'admin' },
   { username: 'rita', display_name: 'Rita Shah', role: 'reviewer' },
   { username: 'sam', display_name: 'Sam Lee', role: 'reviewer' },
   { username: 'alice', display_name: 'Alice Chen', role: 'submitter' },
   { username: 'ben', display_name: 'Ben Okafor', role: 'submitter' },
 ]
+
+/** Build an admin Users-tab row. */
+export function makeAdminUser(overrides: Partial<AdminUser> = {}): AdminUser {
+  return {
+    id: 1,
+    username: 'alice',
+    display_name: 'Alice Chen',
+    role: 'submitter',
+    is_active: true,
+    is_demo: true,
+    date_joined: '2026-11-01T10:00:00Z',
+    last_login: '2026-11-07T10:00:00Z',
+    submissions: { total: 3, pending: 1, approved: 1, rejected: 1 },
+    reviews: { total: 0, approved: 0, rejected: 0 },
+    ...overrides,
+  }
+}
 
 /** Build a document detail fixture. */
 export function makeDoc(overrides: Partial<DocumentDetail> = {}): DocumentDetail {

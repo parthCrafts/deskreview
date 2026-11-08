@@ -10,17 +10,19 @@ MAX = 5 * 1024 * 1024
 def test_title_blank_and_too_long():
     """Titles are required and capped at 200 characters."""
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("   ", "x", None)
+        validate_submission("   ", "Some body text", None)
     assert e.value.fields["title"] == ["Title is required."]
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("a" * 201, "x", None)
+        validate_submission("a" * 201, "Some body text", None)
     assert e.value.fields["title"] == ["Title must be at most 200 characters."]
 
 
 def test_title_200_ok_and_trimmed():
     """A 200-char title is fine and surrounding whitespace is dropped."""
-    assert validate_submission("  Hello  ", "x", None).title == "Hello"
-    assert validate_submission("a" * 200, "x", None).title == "a" * 200
+    assert validate_submission("  Hello  ", "Some body text", None).title == "Hello"
+    title = ("abcdefghi " * 20)[:199] + "z"
+    assert len(title) == 200
+    assert validate_submission(title, "Some body text", None).title == title
 
 
 @pytest.mark.parametrize("text,has_file", [(None, False), ("", False), ("hi", True)])
@@ -28,7 +30,7 @@ def test_neither_or_both(text, has_file):
     """Exactly one of text or file is required."""
     f = upload("a.pdf", pdf()) if has_file else None
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("T", text, f)
+        validate_submission("Test doc", text, f)
     assert {"text", "file"} <= set(e.value.fields)
     expected = "Provide either a file or text, not both." if has_file else "Provide a file or text."
     assert e.value.message == expected
@@ -44,22 +46,77 @@ def test_errors_collected_together():
 def test_blank_text_with_whitespace():
     """Whitespace-only text counts as no text."""
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("T", "   \n ", None)
+        validate_submission("Test doc", "   \n ", None)
     assert "text" in e.value.fields
 
 
 def test_text_too_long():
     """Text is capped at 50,000 characters after trimming."""
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("T", "a" * 50_001, None)
+        validate_submission("Test doc", "a" * 50_001, None)
     assert e.value.fields["text"] == ["Text must be at most 50,000 characters."]
-    assert validate_submission("T", " " + "a" * 50_000 + " ", None).text == "a" * 50_000
+    text = ("abcdefghi " * 5000)[:49_999] + "z"
+    assert validate_submission("Test doc", f"  {text} \n", None).text == text
+
+
+@pytest.mark.parametrize(
+    "title,message",
+    [
+        ("ab", "Title must be at least 3 characters."),
+        ("  ab  ", "Title must be at least 3 characters."),
+        ("Line one\nline two", "Title must be a single line without special control characters."),
+        ("Bad\x00title", "Title must be a single line without special control characters."),
+        ("!!! --- ???", "Title must include at least one letter or number."),
+        ("a" * 61, "Title has a word longer than 60 characters. Add spaces."),
+    ],
+)
+def test_title_rules(title, message):
+    """Titles need a few real characters on one line, without absurdly long words."""
+    with pytest.raises(ValidationFailed) as e:
+        validate_submission(title, "Some body text", None)
+    assert e.value.fields["title"] == [message]
+
+
+def test_title_rules_accept_unicode_and_emoji():
+    """Non-Latin scripts, emoji and 60-character words are fine."""
+    for title in ("Résumé für Q3", "契約書 第2版", "🚀 Launch plan", "x" * 60):
+        assert validate_submission(title, "Some body text", None).title == title
+
+
+@pytest.mark.parametrize(
+    "text,message",
+    [
+        ("Too short", "Text must be at least 10 characters so a reviewer has something to read."),
+        (
+            "Hello\x00world, how are you",
+            "Text contains control characters. Paste it as plain text.",
+        ),
+        ("Bell\x07 character here", "Text contains control characters. Paste it as plain text."),
+        ("!!!!!!!!!!!! ??????", "Text must include letters or numbers."),
+        (
+            "Intro " + "A" * 501,
+            "Text has an unbroken run longer than 500 characters. "
+            "Is it pasted data rather than a document?",
+        ),
+    ],
+)
+def test_text_rules(text, message):
+    """Text must be a readable document: long enough, no control characters, no data blobs."""
+    with pytest.raises(ValidationFailed) as e:
+        validate_submission("Test doc", text, None)
+    assert e.value.fields["text"] == [message]
+
+
+def test_text_rules_allow_tabs_newlines_and_long_urls():
+    """Ordinary formatting and a long-ish URL are fine."""
+    text = "Line one\n\tIndented line\r\nSee https://example.com/" + "p" * 400
+    assert validate_submission("Test doc", text, None).text == text
 
 
 def test_empty_file():
     """A zero-byte file is a field error."""
     with pytest.raises(ValidationFailed) as e:
-        validate_submission("T", None, upload("a.pdf", b""))
+        validate_submission("Test doc", None, upload("a.pdf", b""))
     assert e.value.fields["file"] == ["File is empty."]
 
 

@@ -1,6 +1,7 @@
 """Demo users and sample documents for the public demo."""
 
 DEMO_USERS: list[dict] = [
+    {"username": "admin", "display_name": "Avery Morgan", "role": "admin"},
     {"username": "alice", "display_name": "Alice Chen", "role": "submitter"},
     {"username": "ben", "display_name": "Ben Okafor", "role": "submitter"},
     {"username": "rita", "display_name": "Rita Shah", "role": "reviewer"},

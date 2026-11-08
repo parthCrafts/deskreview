@@ -56,6 +56,34 @@ def test_comment_too_long_400(api_client, reviewer, submitter, make_document, au
     assert r.status_code == 400 and "comment" in r.json()["error"]["fields"]
 
 
+CONTROL_MESSAGE = "Comment contains control characters. Paste it as plain text."
+
+
+@pytest.mark.parametrize(
+    "decision,comment,message",
+    [
+        ("reject", "Fix it", "Give the submitter a bit more detail: at least 10 characters."),
+        ("reject", "Bad\x07 comment here", CONTROL_MESSAGE),
+        ("approve", "Ok\x1b[31m red", CONTROL_MESSAGE),
+    ],
+)
+def test_comment_rules_400(
+    api_client, reviewer, submitter, make_document, auth, decision, comment, message
+):
+    """Rejections need a usable reason; no comment may carry control characters."""
+    doc = make_document(submitter)
+    r = review(auth(api_client, reviewer), doc.id, decision, comment)
+    assert r.status_code == 400 and r.json()["error"]["fields"]["comment"] == [message]
+    doc.refresh_from_db()
+    assert doc.status == "pending"
+
+
+def test_short_approve_comment_ok(api_client, reviewer, submitter, make_document, auth):
+    """Approval comments are optional and may be short."""
+    doc = make_document(submitter)
+    assert review(auth(api_client, reviewer), doc.id, "approve", "LGTM").status_code == 200
+
+
 def test_submitter_cannot_review_403(api_client, submitter, other_submitter, make_document, auth):
     """Submitters can't review, and the role check reveals nothing about the document."""
     doc = make_document(other_submitter)

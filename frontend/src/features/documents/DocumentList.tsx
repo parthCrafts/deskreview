@@ -17,10 +17,12 @@ import { type StatusFilter, useDocuments, useListParams } from './useDocuments'
 
 interface DocumentListProps {
   scope: 'mine' | 'all'
-  basePath: '/documents' | '/review'
+  basePath: '/documents' | '/review' | '/manage/documents'
   emptyState: ReactNode
   defaultStatus?: StatusFilter
   selectedIndex?: number
+  /** Oversight view: add who reviewed each document, when, and their note. */
+  showReview?: boolean
 }
 
 /** A relative timestamp with the absolute time on hover. */
@@ -35,7 +37,7 @@ function When({ iso }: { iso: string | null }) {
 
 /** Status tabs, search, results (table or cards) and paging for a document list. */
 export const DocumentList = forwardRef<HTMLInputElement, DocumentListProps>(function DocumentList(
-  { scope, basePath, emptyState, defaultStatus = 'all', selectedIndex = -1 },
+  { scope, basePath, emptyState, defaultStatus = 'all', selectedIndex = -1, showReview = false },
   searchRef,
 ) {
   const params = useListParams(defaultStatus)
@@ -93,7 +95,8 @@ export const DocumentList = forwardRef<HTMLInputElement, DocumentListProps>(func
               {showSubmitter && <TableHead>Submitted by</TableHead>}
               <TableHead>Status</TableHead>
               <TableHead>Submitted</TableHead>
-              {!showSubmitter && <TableHead>Decided</TableHead>}
+              {(!showSubmitter || showReview) && <TableHead>{showReview ? 'Reviewed by' : 'Decided'}</TableHead>}
+              {showReview && <TableHead>Decision note</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,9 +125,34 @@ export const DocumentList = forwardRef<HTMLInputElement, DocumentListProps>(func
                 <TableCell className="whitespace-nowrap text-muted-foreground">
                   <When iso={doc.created_at} />
                 </TableCell>
-                {!showSubmitter && (
+                {!showSubmitter && !showReview && (
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     <When iso={doc.decided_at} />
+                  </TableCell>
+                )}
+                {showReview && (
+                  <TableCell className="whitespace-nowrap">
+                    {doc.decided_by ? (
+                      <>
+                        <span className="block">{doc.decided_by.display_name}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          <When iso={doc.decided_at} />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Awaiting review</span>
+                    )}
+                  </TableCell>
+                )}
+                {showReview && (
+                  <TableCell className="max-w-56 whitespace-normal text-muted-foreground">
+                    {doc.decision_comment ? (
+                      <span className="line-clamp-2" title={doc.decision_comment}>
+                        {doc.decision_comment}
+                      </span>
+                    ) : (
+                      <span>—</span>
+                    )}
                   </TableCell>
                 )}
               </TableRow>
@@ -151,6 +179,12 @@ export const DocumentList = forwardRef<HTMLInputElement, DocumentListProps>(func
                 {showSubmitter ? `${doc.submitter.display_name}, ` : 'Submitted '}
                 <When iso={doc.created_at} />
               </p>
+              {showReview && doc.decided_by && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {doc.status === 'approved' ? 'Approved' : 'Rejected'} by {doc.decided_by.display_name}
+                  {doc.decision_comment && `: “${doc.decision_comment}”`}
+                </p>
+              )}
             </Link>
           </li>
         ))}
@@ -163,7 +197,7 @@ export const DocumentList = forwardRef<HTMLInputElement, DocumentListProps>(func
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="-mx-1 overflow-x-auto px-1">
+        <div className="-mx-1 overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <StatusTabs value={params.status} counts={data?.counts} onChange={(status) => params.set({ status })} />
         </div>
         <SearchBox ref={searchRef} value={params.q} onChange={setQ} />

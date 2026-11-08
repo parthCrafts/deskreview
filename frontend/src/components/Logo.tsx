@@ -1,9 +1,10 @@
 import { Stamp } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 /** The DeskReview wordmark. */
-export function Logo() {
+export function Logo({ className }: { className?: string }) {
   return (
-    <span className="inline-flex items-center gap-2 font-semibold tracking-tight">
+    <span className={cn('inline-flex items-center gap-2 font-semibold tracking-tight', className)}>
       <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
         <Stamp className="size-4" aria-hidden />
       </span>
