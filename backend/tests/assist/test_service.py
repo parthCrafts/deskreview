@@ -170,7 +170,7 @@ def test_retry_uses_fallback_model(
     fallback = FakeProvider([json.dumps(valid_report)])
     fallback.model = "fallback-model"
     monkeypatch.setattr(service, "get_provider", lambda: primary)
-    monkeypatch.setattr(service, "get_fallback_provider", lambda: fallback)
+    monkeypatch.setattr(service, "get_fallback_providers", lambda: [fallback])
     doc = make_document(submitter)
     out = get_or_generate_assist(reviewer, str(doc.id))
     assert out.status == "ok" and out.model == "fallback-model"
@@ -204,7 +204,7 @@ def _install(monkeypatch, primary, fallback):
     from apps.assist import service
 
     monkeypatch.setattr(service, "get_provider", lambda: primary)
-    monkeypatch.setattr(service, "get_fallback_provider", lambda: fallback)
+    monkeypatch.setattr(service, "get_fallback_providers", lambda: [fallback])
 
 
 def test_slow_primary_is_hedged_by_fallback(

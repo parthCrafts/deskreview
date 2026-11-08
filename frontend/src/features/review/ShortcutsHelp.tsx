@@ -16,6 +16,7 @@ const GROUPS = [
     keys: [
       ['a', 'Approve'],
       ['r', 'Reject'],
+      ['n', 'Next pending document (after deciding)'],
       ['Esc', 'Close dialog'],
     ],
   },

@@ -84,18 +84,37 @@ describe('ReviewActions', () => {
     await waitFor(() => expect(field).toHaveAccessibleDescription(/^Comment must be at most 2,000 characters\. /))
   })
 
-  it('approves, toasts and moves on to the queue when nothing else is pending', async () => {
+  it('approves, toasts and stays on the document showing the decision', async () => {
     const { user, posts, onReview, setCurrent } = renderReview()
+    const mine = { ...approved, decided_by: { id: 3, username: 'rita', display_name: 'Rita Shah' } }
     onReview(() => {
-      setCurrent(approved)
-      return HttpResponse.json(approved)
+      setCurrent(mine)
+      return HttpResponse.json(mine)
     })
     await user.click(await screen.findByRole('button', { name: /^approve/i }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: /^approve document/i }))
     await waitFor(() => expect(document.querySelector('[data-sonner-toast]')).toHaveTextContent('Approved'))
     expect(posts).toEqual([{ decision: 'approve', comment: null }])
+    expect(await screen.findByRole('region', { name: /decision$/i })).toHaveTextContent(/approved by rita shah/i)
+    expect(screen.getByTestId('location')).toHaveTextContent('/review/d1')
+    expect(screen.getByRole('button', { name: /next pending document/i })).toBeInTheDocument()
+  })
+
+  it('next pending document goes to the queue when nothing else is pending', async () => {
+    const { user } = renderReview(approved)
+    await user.click(await screen.findByRole('button', { name: /next pending document/i }))
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/review$/))
+  })
+
+  it('n opens the next pending document after a decision', async () => {
+    const { user } = renderReview(approved)
+    server.use(
+      http.get('/api/v1/documents', () => HttpResponse.json(makeList({ results: [makeDoc({ id: 'd2', title: 'Next one' })] }))),
+    )
+    await screen.findByRole('button', { name: /next pending document/i })
+    await user.keyboard('n')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/review/d2'))
   })
 
   it('handles 409 by toasting and refreshing status', async () => {

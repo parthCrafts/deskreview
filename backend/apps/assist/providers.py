@@ -127,24 +127,28 @@ class FakeProvider:
         return item
 
 
+def gemini_models() -> list[str]:
+    """GEMINI_MODEL split on commas: the primary first, then the fallbacks, without repeats."""
+    names = (name.strip() for name in settings.GEMINI_MODEL.split(","))
+    return list(dict.fromkeys(name for name in names if name))
+
+
 def get_provider() -> AssistProvider | None:
     """Return the configured provider, or None when AI Assist is off."""
     choice = settings.AI_PROVIDER
     if choice == "fake":
         return FakeProvider()
-    if choice == "gemini" and settings.GEMINI_API_KEY:
-        return GeminiProvider(
-            settings.GEMINI_API_KEY, settings.GEMINI_MODEL, settings.GEMINI_THINKING_LEVEL
-        )
+    models = gemini_models()
+    if choice == "gemini" and settings.GEMINI_API_KEY and models:
+        return GeminiProvider(settings.GEMINI_API_KEY, models[0], settings.GEMINI_THINKING_LEVEL)
     return None
 
 
-def get_fallback_provider() -> AssistProvider | None:
-    """Return the fast Gemini model raced against (or retried after) the primary, if any."""
-    primary = get_provider()
-    fallback = settings.GEMINI_FALLBACK_MODEL
-    if not isinstance(primary, GeminiProvider) or not fallback or fallback == primary.model:
-        return None
-    return GeminiProvider(
-        settings.GEMINI_API_KEY, fallback, settings.GEMINI_FALLBACK_THINKING_LEVEL
-    )
+def get_fallback_providers() -> list[AssistProvider]:
+    """Return the Gemini models listed after the primary, in the order they should be tried."""
+    if not isinstance(get_provider(), GeminiProvider):
+        return []
+    return [
+        GeminiProvider(settings.GEMINI_API_KEY, model, settings.GEMINI_FALLBACK_THINKING_LEVEL)
+        for model in gemini_models()[1:]
+    ]

@@ -22,10 +22,8 @@ services:
         value: database
       - key: DEMO_LOGIN_ENABLED
         value: "true"
-      - key: GEMINI_MODEL
-        value: gemini-3.8-flash
-      - key: GEMINI_FALLBACK_MODEL # fastest model: races a slow primary, takes over a failed one
-        value: gemini-3.5-flash-lite
+      - key: GEMINI_MODEL # primary first; every model after a comma is a fallback, in order
+        value: gemini-3.8-flash,gemini-3.5-flash-lite
       - key: AI_TIMEOUT_SECONDS # per call; a stuck call is abandoned
         value: "12"
       - key: AI_HEDGE_SECONDS # start the fallback if the primary hasn't answered by then

@@ -1,16 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { ArrowRight } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { apiFetch } from '@/api/client'
 import { qk } from '@/api/keys'
-import type { DocumentList } from '@/api/types'
+import type { DocumentDetail, DocumentList } from '@/api/types'
+import { Kbd } from '@/components/Kbd'
+import { Button } from '@/components/ui/button'
 import { AssistPanel } from '@/features/assist/AssistPanel'
 import { DocumentLayout, DocumentLoader } from '@/features/documents/DocumentView'
 import { useHotkeys } from '@/lib/hotkeys'
 import { ReviewActions, type ReviewActionsHandle } from './ReviewActions'
 import { ShortcutsHelp } from './ShortcutsHelp'
 
-/** After a decision, open the next pending document, or return to the queue. */
+/** Open the next pending document other than the current one, or return to the queue. */
 function useGoToNextPending(currentId: string) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -28,6 +31,17 @@ function useGoToNextPending(currentId: string) {
       navigate('/review')
     }
   }
+}
+
+/** Shown once a document is decided, so the reviewer sees the result before moving on. */
+function NextPending({ doc, onNext }: { doc: DocumentDetail; onNext: () => void }) {
+  useHotkeys({ n: onNext }, { enabled: doc.status !== 'pending' })
+  if (doc.status === 'pending') return null
+  return (
+    <Button className="w-full" onClick={onNext} aria-keyshortcuts="n">
+      Next pending document <ArrowRight aria-hidden /> <Kbd>n</Kbd>
+    </Button>
+  )
 }
 
 /** A reviewer's view of one document with the approve/reject actions. */
@@ -52,7 +66,8 @@ export function ReviewDocumentPage() {
                     decision === 'approve' ? actions.current?.openApprove(note) : actions.current?.openReject(note)
                   }
                 />
-                <ReviewActions ref={actions} doc={doc} onDecided={goNext} />
+                <ReviewActions ref={actions} doc={doc} />
+                <NextPending doc={doc} onNext={goNext} />
               </>
             }
           />

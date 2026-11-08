@@ -13,3 +13,12 @@ test-results/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# Local only: Claude settings, env backups and Neon CLI files
+.claude/
+.env.local
+.env.backup-*
+.neon
+/neon.ts
+/package.json
+/package-lock.json

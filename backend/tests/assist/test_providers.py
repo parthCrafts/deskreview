@@ -85,27 +85,31 @@ def test_gemini_sends_schema_and_settings(monkeypatch):
 
 def test_models_and_thinking_levels(settings):
     """The primary is the capable model at low thinking; the fallback is fast at minimal."""
-    from apps.assist.providers import get_fallback_provider
+    from apps.assist.providers import get_fallback_providers
 
     settings.AI_PROVIDER, settings.GEMINI_API_KEY = "gemini", "k"
-    settings.GEMINI_MODEL, settings.GEMINI_THINKING_LEVEL = "gemini-3.8-flash", "low"
-    settings.GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite"
-    settings.GEMINI_FALLBACK_THINKING_LEVEL = "minimal"
+    settings.GEMINI_MODEL = "gemini-3.8-flash,gemini-3.5-flash-lite"
+    settings.GEMINI_THINKING_LEVEL, settings.GEMINI_FALLBACK_THINKING_LEVEL = "low", "minimal"
     assert (get_provider().model, get_provider().thinking_level) == ("gemini-3.8-flash", "low")
-    fallback = get_fallback_provider()
+    [fallback] = get_fallback_providers()
     assert (fallback.model, fallback.thinking_level) == ("gemini-3.5-flash-lite", "minimal")
 
 
 def test_fallback_provider_selection(settings):
-    """A Gemini fallback model is offered only when configured and different."""
-    from apps.assist.providers import get_fallback_provider
+    """Every model after the first in GEMINI_MODEL is a fallback, in order, without repeats."""
+    from apps.assist.providers import get_fallback_providers
+
+    def fallbacks():
+        return [p.model for p in get_fallback_providers()]
 
     settings.AI_PROVIDER, settings.GEMINI_API_KEY = "gemini", "k"
-    settings.GEMINI_MODEL, settings.GEMINI_FALLBACK_MODEL = "a", "b"
-    assert get_fallback_provider().model == "b"
-    settings.GEMINI_FALLBACK_MODEL = "a"
-    assert get_fallback_provider() is None
-    settings.GEMINI_FALLBACK_MODEL = ""
-    assert get_fallback_provider() is None
-    settings.AI_PROVIDER = "fake"
-    assert get_fallback_provider() is None
+    settings.GEMINI_MODEL = " a , b,c,, a "
+    assert get_provider().model == "a" and fallbacks() == ["b", "c"]
+    settings.GEMINI_MODEL = "a"
+    assert fallbacks() == []
+    settings.GEMINI_MODEL = "a,a"
+    assert fallbacks() == []
+    settings.GEMINI_MODEL = " , "
+    assert get_provider() is None and fallbacks() == []
+    settings.GEMINI_MODEL, settings.AI_PROVIDER = "a,b", "fake"
+    assert fallbacks() == []
