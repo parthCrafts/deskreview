@@ -24,8 +24,8 @@ function blockedReason(doc: DocumentDetail, meId?: number): string | null {
 }
 
 /** Approve and Reject buttons with their dialogs and the a/r shortcuts. */
-export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDetail; onDecided?: () => void }>(
-  function ReviewActions({ doc, onDecided }, ref) {
+export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDetail }>(
+  function ReviewActions({ doc }, ref) {
     const { data: me } = useMe()
     const review = useReviewDocument(doc.id)
     const [dialog, setDialog] = useState<'approve' | 'reject' | null>(null)
@@ -47,7 +47,6 @@ export const ReviewActions = forwardRef<ReviewActionsHandle, { doc: DocumentDeta
       try {
         await review.mutateAsync({ decision, comment })
         close()
-        onDecided?.()
       } catch (error) {
         if (error instanceof ApiError && error.status === 409) close()
         throw error
