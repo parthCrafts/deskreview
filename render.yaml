@@ -4,31 +4,32 @@ services:
     name: deskreview
     runtime: docker
     plan: free
+    region: singapore
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: DATABASE_URL # Neon *direct* (non-pooled) connection string with sslmode=require
+      - key: DATABASE_URL
         sync: false
-      - key: GEMINI_API_KEY # from Google AI Studio; leave empty to run without AI Assist
+      - key: GEMINI_API_KEY
         sync: false
       - key: SECRET_KEY
         generateValue: true
-      - key: DEMO_PASSWORD # only for username/password login; demo buttons need no password
+      - key: DEMO_PASSWORD
         generateValue: true
       - key: DEBUG
         value: "false"
-      - key: FILE_STORAGE # Render's free disk is wiped on restart, so files live in Postgres
+      - key: FILE_STORAGE
         value: database
       - key: DEMO_LOGIN_ENABLED
         value: "true"
-      - key: GEMINI_MODEL # primary first; every model after a comma is a fallback, in order
-        value: gemini-3.8-flash,gemini-3.5-flash-lite
-      - key: AI_TIMEOUT_SECONDS # per call; a stuck call is abandoned
-        value: "12"
-      - key: AI_HEDGE_SECONDS # start the fallback if the primary hasn't answered by then
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.6-flash
+      - key: AI_TIMEOUT_SECONDS
+        value: "30"
+      - key: AI_HEDGE_SECONDS
         value: "4"
-      - key: NUM_PROXIES # trust one proxy hop for per-IP login throttling
+      - key: NUM_PROXIES
         value: "1"
       - key: LOG_LEVEL
         value: INFO
